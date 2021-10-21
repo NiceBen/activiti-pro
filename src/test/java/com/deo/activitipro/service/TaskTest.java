@@ -2,6 +2,7 @@ package com.deo.activitipro.service;
 
 import org.activiti.engine.ProcessEngine;
 import org.activiti.engine.TaskService;
+import org.activiti.engine.task.Task;
 import org.activiti.engine.task.TaskQuery;
 import org.junit.Before;
 import org.junit.Test;
@@ -10,6 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.context.web.WebAppConfiguration;
+
+import java.util.List;
 
 /**
  * 流程引擎-Task（任务）
@@ -54,12 +57,61 @@ public class TaskTest {
     public void test4() {
         // 查询指派人下的任务
         TaskQuery taskQuery = taskService.createTaskQuery();
+        // 指定人就是当前人下的任务，不指定人就是所有任务
+        String assignee = "zhangsan";
+//        taskQuery.taskAssignee(assignee);
 
+        taskQuery.orderByTaskCreateTime().desc();
 
-
-
+        List<Task> list = taskQuery.list();
+        for (Task task : list) {
+            String id = task.getId();
+            String name = task.getName();
+            String assignee1 = task.getAssignee();
+            System.out.println(id + "---" + name + "----" + assignee1);
+        }
     }
 
+    /**
+     * 拾取任务
+     */
+    @Test
+    public void chaimTask() {
+        // 要拾取的任务ID
+        String taskId = "15002";
+        // 任务候选人ID
+        String userId = "zhangsan";
+        // 拾取任务
+        // 即使该用户不是候选人也能拾取（建议拾取时校验是否有资格）
+        // 校验该用户有没有拾取任务的资格
+        Task task = taskService.createTaskQuery().taskId(taskId)
+                .taskCandidateUser(userId)  // 根据候选人查询
+                .singleResult();
 
+        if (task != null) {
+            taskService.claim(taskId, userId);
+            System.out.println("任务拾取成功");
+        }
+    }
 
+    /**
+     * 拾取任务后，进行取消操作
+     */
+    @Test
+    public void setAssigneeToGroupTask() {
+        // 查询任务使用
+
+        // 当前待办任务
+        String taskId = "15002";
+        // 任务负责人
+        String userId = "zhangsan";
+        // 验证userId是否是taskId的负责人，如果是负责人才可以归还组任务
+        Task task = taskService.createTaskQuery().taskId(taskId)
+                .taskAssignee(userId).singleResult();
+
+        if (task != null) {
+            // 如果设置为 null，归还组任务，该任务没有负责人
+            taskService.setAssignee(taskId, null);
+        }
+    }
 }
